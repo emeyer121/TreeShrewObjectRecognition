@@ -7,14 +7,19 @@ startup
 tbUseProject('ISETTreeShrew');
 
 %% Generate cone mosaics and render matrices piecewise
-species = 'treeshrew';
+% Specify location for storing cone mosaics and render matrices. Render
+% matrices can be quite large so make sure space is available.
+dataSavePath = '/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/';
 
-imOrigSize = 227;
+% Specify parameters for full cone mosaic and render matrix located at a
+% specific location in visual space.
+species = 'treeshrew';
+imOrigSize = 20;
 sceneFOVpadding = 1.2;
 imBorder = (ceil(imOrigSize*sceneFOVpadding) - imOrigSize)/2;
 imSize = ceil(imOrigSize + imBorder*2);
 
-sceneFOVs = [1.25, 2.5, 5, 10];
+sceneFOVs = [0.25];
 
 for sfd = 1:length(sceneFOVs)
     sceneFOVdegs = sceneFOVs(sfd);
@@ -22,9 +27,11 @@ for sfd = 1:length(sceneFOVs)
     mosaicSize = sceneFOVdegs+borderSize*2;
 
     % Only used 4x4 blocks for 1.25 & 2.5 degs and 6x6 for 5 & 10 degs
-    if sfd == 1 || sfd == 2
+    if sceneFOVdegs<1
+        nBlock = 2;
+    elseif sceneFOVdegs>=1 && sceneFOVdegs<5
         nBlock = 4;
-    else
+    elseif sceneFOVdegs>=5
         nBlock = 6;
     end
     blockLen = imOrigSize/nBlock;
@@ -80,13 +87,15 @@ for sfd = 1:length(sceneFOVs)
 
                 % Load or create cone mosaic
                 try
-                    load(sprintf('/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/coneMosaics/human_blocked/coneMosaic_deg%s_Xecc%s_Yecc%s_quad.mat',FOV_str,eccX_str,eccY_str),'HumanConeMosaic')
+                    load(sprintf('%s/coneMosaics_test/human_blocked/coneMosaic_deg%s_Xecc%s_Yecc%s_quad.mat',dataSavePath,FOV_str,eccX_str,eccY_str),'HumanConeMosaic')
                 catch
                     HumanConeMosaic = cMosaic('sizeDegs',mosaicFOVdegs,'eccentricityDegs',[eccX,eccY]);
-                    save(sprintf('/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/coneMosaics/human_blocked/coneMosaic_deg%s_Xecc%s_Yecc%s_quad.mat',FOV_str,eccX_str,eccY_str),'HumanConeMosaic')
+                    save(sprintf('%s/coneMosaics_test/human_blocked/coneMosaic_deg%s_Xecc%s_Yecc%s_quad.mat',dataSavePath,FOV_str,eccX_str,eccY_str),'HumanConeMosaic')
                 end
 
-                % Enter mosaic and OI into retina object
+                % Enter mosaic and OI into retina object. Could also
+                % specify display params as retina.Display but defaults are
+                % used here.
                 retina.Mosaic = HumanConeMosaic;
                 retina.PSF = HumanOI;
 
@@ -96,11 +105,10 @@ for sfd = 1:length(sceneFOVs)
 
                 % Load or create cone mosaic
                 try
-                    load(sprintf('/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/coneMosaics/treeshrew_blocked/coneMosaic_deg%s_Xecc%s_Yecc%s_quad.mat',FOV_str,eccX_str,eccY_str),'TSConeMosaic')
+                    load(sprintf('%s/coneMosaics_test/treeshrew_blocked/coneMosaic_deg%s_Xecc%s_Yecc%s_quad.mat',dataSavePath,FOV_str,eccX_str,eccY_str),'TSConeMosaic')
                 catch
                     TSConeMosaic = cMosaicTreeShrewCreate('fovDegs', mosaicFOVdegs,'integrationTime', integrationTimeSeconds,'eccentricityDegs',[eccX,eccY]);
-                    % TSConeMosaic = cMosaic('sizeDegs',mosaicFOVdegs,'eccentricityDegs',[eccX,eccY]);
-                    save(sprintf('/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/coneMosaics/treeshrew_blocked/coneMosaic_deg%s_Xecc%s_Yecc%s_quad.mat',FOV_str,eccX_str,eccY_str),'TSConeMosaic')
+                    save(sprintf('%s/coneMosaics_test/treeshrew_blocked/coneMosaic_deg%s_Xecc%s_Yecc%s_quad.mat',dataSavePath,FOV_str,eccX_str,eccY_str),'TSConeMosaic')
                 end
 
                 % Enter mosaic and OI into retina object
@@ -115,13 +123,13 @@ for sfd = 1:length(sceneFOVs)
             % Compute cone excitations in response to test image
             [coneExcitations, linearStimulusImage] = retina.compute(testImage);
 
-            % Compute render matrix. Will take a long time depending on
+            % Compute render matrix. May take a long time depending on
             % size of image! I have updated some parallel processing
             % allocations within ConeResponseCmosaic script.
             renderMtx = retina.forwardRender(blockSize, true, true, 'useDoublePrecision', true);
             renderMtx = double(renderMtx);
 
-            save(sprintf('/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/renderMatrices/%s_blocked/render_%s_Xecc%s_Yecc%s_disptest.mat',species,FOV_str,eccX_str,eccY_str),'renderMtx','-v7.3')
+            save(sprintf('%s/renderMatrices_test/%s_blocked/render_%s_Xecc%s_Yecc%s.mat',dataSavePath,species,FOV_str,eccX_str,eccY_str),'renderMtx','-v7.3')
             delete(gcp('nocreate'))
             % end
         end
