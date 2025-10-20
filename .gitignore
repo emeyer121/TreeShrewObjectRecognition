@@ -27,8 +27,10 @@
 *.sql
 *.sqlite
 *.html
+*.pyc
 
 # Data #
+########
 *.mov
 *.mp4
 *.csv
@@ -37,6 +39,7 @@
 *.wav
 
 # Images #
+##########
 *.png
 *.jpg
 *.jpeg
