@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 # initialize
 torch.cuda.set_device(1)
 species = 'treeshrew'
-sceneFOVdegs = 5
+sceneFOVdegs = 2.5
 imageSetName = 'Kiani_ImageSet'
 sceneFOVscale = 1.2
 num_it = 4000
@@ -226,7 +226,88 @@ def run_parallel_threads():
             except Exception as exc:
                 print(f'Block {args[0:2]} generated an exception: {exc}')
 
+def merge_blocks():
+
+
+# # Initialize number of categories based on folders in konkle_imgs
+#     allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
+#     allCats = [cat for cat in allCats if not cat.startswith('.')]
+
+#     if norm_img:
+#         allCats = normalize_image(imageSetName, allCats, makeGrayscale, target_luminance, target_contrast, imOrig, imBorder)
+#         imageSetName = imageSetName + '_norm'
+
+#     nCats = len(allCats)
+
+#     for idx1,cc in enumerate(allCats):
+#         print(f'Block ({row_idx}, {col_idx}) - Category: {cc}')
+#         allImgs = os.listdir('../stimulusSets/'+imageSetName+'/'+cc+'/')
+#         # exclude images that start with '.'
+#         allImgs = [img for img in allImgs if not img.startswith('.') and (img.endswith('.jpg') or img.endswith('.bmp') or img.endswith('.png'))]
+#         allImgs = allImgs
+#         nImgs = len(allImgs)
+
+    allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
+    allCats = [cat for cat in allCats if not cat.startswith('.')]
+
+    for idx1,cc in enumerate(allCats):
+
+        new_dir = f'../stimulusSets/{imageSetName}/{cc}'
+        norm_cat = cc
+        if norm_img:
+            imageSetName_new = imageSetName + '_norm'
+            norm_cat = cc + '_norm'
+            new_dir = f'../stimulusSets/{imageSetName_new}/{norm_cat}/'
+
+        allImgs = os.listdir(new_dir)
+        # exclude images that start with '.'
+        allImgs = [img for img in allImgs if not img.startswith('.') and (img.endswith('.jpg') or img.endswith('.bmp') or img.endswith('.png'))]
+
+        for idx,ii in enumerate(allImgs):
+            init_img = np.zeros((227, 227, 3), dtype=np.float32)
+
+            for row_idx in range(1, nBlock+1):
+                for col_idx in range(1, nBlock+1):
+
+                    if col_idx == 1:
+                        col_val = np.arange(1,np.ceil(col_idx*blockLen+imBorder*2)+1)
+                    elif col_idx==nBlock:
+                        col_val = np.arange(np.ceil((col_idx-1)*blockLen), imSize+1)
+                    else:
+                        col_val = np.arange((col_idx-1)*blockLen,col_idx*blockLen+imBorder*2)
+
+                    if row_idx == 1:
+                        row_val = np.arange(1,np.ceil(row_idx*blockLen+imBorder*2)+1)
+                    elif row_idx==nBlock:
+                        row_val = np.arange(np.ceil((row_idx-1)*blockLen), imSize+1)
+                    else:
+                        row_val = np.arange((row_idx-1)*blockLen,row_idx*blockLen+imBorder*2)
+
+                    col_block = np.arange((col_idx-1)*blockLen, col_idx*blockLen).astype(int)
+                    row_block = np.arange((row_idx-1)*blockLen, row_idx*blockLen).astype(int)
+
+                    eccY = ((np.mean(col_val)-(imSize/2))*mosaicSize/2)/(imSize/2)
+                    eccX = ((np.mean(row_val)-(imSize/2))*mosaicSize/2)/(imSize/2)
+                    FOV_val = str(sceneFOVdegs)
+
+                    eccX_val = str(np.round(eccX,2))
+                    eccY_val = str(np.round(eccY,2))
+
+                    file_path = f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/Xecc{eccX_val}_Yecc{eccY_val}/{allImgs[idx]}'
+
+                    img = cv2.imread(file_path)
+                    img_size = img.shape[0]
+
+                    img_crop = img[imBorder:img_size-imBorder, imBorder:img_size-imBorder, :]
+
+                    init_img[np.ix_(row_block, col_block)] = img_crop
+
+            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged'):
+                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged')
+            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged/{allImgs[idx]}',np.uint8(init_img))
+
 # Run the parallelized version
 if __name__ == '__main__':
     # ThreadPoolExecutor (better for GPU-bound tasks)
     run_parallel_threads()
+    merge_blocks()
