@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 # initialize
 torch.cuda.set_device(1)
 species = 'treeshrew'
-sceneFOVdegs = 2.5
+sceneFOVdegs = 10
 imageSetName = 'Kiani_ImageSet'
 sceneFOVscale = 1.2
 num_it = 4000

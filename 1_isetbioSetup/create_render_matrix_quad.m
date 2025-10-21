@@ -19,7 +19,7 @@ sceneFOVpadding = 1.2;
 imBorder = (ceil(imOrigSize*sceneFOVpadding) - imOrigSize)/2;
 imSize = ceil(imOrigSize + imBorder*2);
 
-sceneFOVs = [0.25];
+sceneFOVs = [2.5];
 
 for sfd = 1:length(sceneFOVs)
     sceneFOVdegs = sceneFOVs(sfd);
