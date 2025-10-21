@@ -18,8 +18,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 # initialize
 torch.cuda.set_device(1)
-species = 'treeshrew'
-sceneFOVdegs = 10
+species = 'human'
+sceneFOVdegs = 2.5
 imageSetName = 'Kiani_ImageSet'
 sceneFOVscale = 1.2
 num_it = 4000
@@ -227,25 +227,6 @@ def run_parallel_threads():
                 print(f'Block {args[0:2]} generated an exception: {exc}')
 
 def merge_blocks():
-
-
-# # Initialize number of categories based on folders in konkle_imgs
-#     allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
-#     allCats = [cat for cat in allCats if not cat.startswith('.')]
-
-#     if norm_img:
-#         allCats = normalize_image(imageSetName, allCats, makeGrayscale, target_luminance, target_contrast, imOrig, imBorder)
-#         imageSetName = imageSetName + '_norm'
-
-#     nCats = len(allCats)
-
-#     for idx1,cc in enumerate(allCats):
-#         print(f'Block ({row_idx}, {col_idx}) - Category: {cc}')
-#         allImgs = os.listdir('../stimulusSets/'+imageSetName+'/'+cc+'/')
-#         # exclude images that start with '.'
-#         allImgs = [img for img in allImgs if not img.startswith('.') and (img.endswith('.jpg') or img.endswith('.bmp') or img.endswith('.png'))]
-#         allImgs = allImgs
-#         nImgs = len(allImgs)
 
     allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
     allCats = [cat for cat in allCats if not cat.startswith('.')]
