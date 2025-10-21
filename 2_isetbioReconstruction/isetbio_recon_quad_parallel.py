@@ -19,7 +19,7 @@ from concurrent.futures import ThreadPoolExecutor
 # initialize
 torch.cuda.set_device(1)
 species = 'human'
-sceneFOVdegs = 2.5
+sceneFOVdegs = 10
 imageSetName = 'Kiani_ImageSet'
 sceneFOVscale = 1.2
 num_it = 4000
@@ -212,7 +212,7 @@ def run_parallel_threads():
             block_args.append(args)
     
     # Use ThreadPoolExecutor (better for GPU-bound tasks)
-    n_threads = min(4, len(block_args))  # Limit threads to avoid GPU memory issues
+    n_threads = 6 # Limit threads to avoid GPU memory issues
     print(f"Using {n_threads} threads for {len(block_args)} blocks")
     
     with ThreadPoolExecutor(max_workers=n_threads) as executor:
