@@ -18,14 +18,14 @@ from concurrent.futures import ThreadPoolExecutor
 
 # initialize
 torch.cuda.set_device(1)
-species = 'human'
+species = 'treeshrew'
 sceneFOVdegs = 10
-imageSetName = 'Kiani_ImageSet'
+imageSetName = 'Camel_v2_test_nn/original'
 sceneFOVscale = 1.2
 num_it = 4000
 
 makeGrayscale = True
-norm_img = True
+norm_img = False
 target_luminance = 0.5
 target_contrast = 0.1
 
@@ -155,7 +155,7 @@ def process_block(args):
         allImgs = os.listdir('../stimulusSets/'+imageSetName+'/'+cc+'/')
         # exclude images that start with '.'
         allImgs = [img for img in allImgs if not img.startswith('.') and (img.endswith('.jpg') or img.endswith('.bmp') or img.endswith('.png'))]
-        allImgs = allImgs
+        allImgs = allImgs[201:301]
         nImgs = len(allImgs)
 
         img_tor = torch.zeros((nImgs,blockSize[2],blockSize[0],blockSize[1]))
@@ -239,11 +239,13 @@ def merge_blocks():
             imageSetName_new = imageSetName + '_norm'
             norm_cat = cc + '_norm'
             new_dir = f'../stimulusSets/{imageSetName_new}/{norm_cat}/'
+        else:
+            imageSetName_new = imageSetName
 
         allImgs = os.listdir(new_dir)
         # exclude images that start with '.'
         allImgs = [img for img in allImgs if not img.startswith('.') and (img.endswith('.jpg') or img.endswith('.bmp') or img.endswith('.png'))]
-
+        
         for idx,ii in enumerate(allImgs):
             init_img = np.zeros((227, 227, 3), dtype=np.float32)
 
