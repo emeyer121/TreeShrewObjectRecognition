@@ -37,6 +37,7 @@
 *.mat
 *.npy
 *.wav
+*.pth
 
 # Images #
 ##########
