@@ -30,8 +30,8 @@ def get_train_targdist_data(datafilepath,task):
     # Get targ_idx numbers that exclude those in test_targ_idx and nov_targ_id
     train_targ_idx = np.setdiff1d(targ_idx, np.union1d(test_targ_idx, nov_targ_idx))
     # Remove target 9 from camel_v2_test_nn since it is only used in a few sessions
-    if task == 'Camel_v2_test_nn':
-        train_targ_idx = train_targ_idx[train_targ_idx != 9]
+    # if task == 'Camel_v2_test_nn':
+    #     train_targ_idx = train_targ_idx[train_targ_idx != 9]
 
     print(train_targ_idx)
 
@@ -159,7 +159,12 @@ def compute_distances(taskName, activations_dict, model_layers):
             activations = np.squeeze(activations)
             
         # Separate target and distractor activations
-        if taskName =='Camel_v2_test_nn' or taskName == 'Camel_Rhino_test_nn':
+        if taskName =='Camel_v2_test_nn':
+            target_activations = activations[:12]
+            # print(target_activations.shape)
+            distractor_activations = activations[12:20]
+            # print(distractor_activations.shape)
+        if taskName == 'Camel_Rhino_test_nn':
             target_activations = activations[:11]
             # print(target_activations.shape)
             distractor_activations = activations[11:19]
@@ -195,8 +200,6 @@ def compute_correlation(avg_perf, distances_dict):
         avg_perf_flat = avg_perf.flatten()
         
         # Compute the correlation coefficient
-        print(distances.shape)
-        print(avg_perf.shape)
         avg_perf_flat_nan = avg_perf_flat[~np.isnan(avg_perf_flat)]
         distances_flat_nan = distances_flat[~np.isnan(avg_perf_flat)]
         correlation[layer] = np.corrcoef(distances_flat_nan, avg_perf_flat_nan)[0, 1]
