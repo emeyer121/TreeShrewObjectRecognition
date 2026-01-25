@@ -143,3 +143,12 @@ colorbar;
 size_diff = table2array(targ_scale) - table2array(dist_scale)';
 size_diff2 = size_diff';
 writematrix(size_diff2(:),'./distData/Camel_v2_test_nn/size_differences.csv')
+
+%% targ perf correlation w size
+targ_perf = mean(perf_array,2);
+
+figure();
+scatter(table2array(targ_scale),targ_perf, 'o')
+hold on;
+[perf1,perf2,xFit,yFit] = corr_fun(table2array(targ_scale),targ_perf);
+plot(xFit,yFit)
