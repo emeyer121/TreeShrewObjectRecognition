@@ -41,7 +41,7 @@ for task = 1:length(allTasks)
                     inclusion = allData.(allTasks{task}).ShrewID==shrewID(ts) & allData.(allTasks{task}).T_Expt_ID==targID{task}(tt) & allData.(allTasks{task}).D_Expt_ID==distID{task}(dd);
                     inclusion_all = allData.(allTasks{task}).T_Expt_ID==targID{task}(tt) & allData.(allTasks{task}).D_Expt_ID==distID{task}(dd);
                     targdistPerf{task,ts}(tt,dd) = mean(allData.(allTasks{task}).correct(inclusion),'omitnan');
-                    targdistPerf_all{task}(tt,dd) = mean(allData.(allTasks{task}).correct(inclusion),'omitnan');
+                    targdistPerf_all{task}(tt,dd) = mean(allData.(allTasks{task}).correct(inclusion_all),'omitnan');
                 end
             end
         end
@@ -130,9 +130,8 @@ xlabel(' ')
 clim([0.5 1])
 
 figure();
-size_diff = targ_sort - dist_sort';
-size_diff2 = size_diff';
-imagesc(size_diff)
+size_diff_sort = targ_sort - dist_sort';
+imagesc(size_diff_sort)
 yticks(1:12)
 yticklabels(targ_sort)
 xticks(1:7)
@@ -142,6 +141,9 @@ colorbar;
 %%
 size_diff = table2array(targ_scale) - table2array(dist_scale)';
 size_diff2 = size_diff';
+sd = size_diff2(:);
+pf = perf_array';
+pf2 = pf(:);
 writematrix(size_diff2(:),'./distData/Camel_v2_test_nn/size_differences.csv')
 
 %% targ perf correlation w size
@@ -152,3 +154,23 @@ scatter(table2array(targ_scale),targ_perf, 'o')
 hold on;
 [perf1,perf2,xFit,yFit] = corr_fun(table2array(targ_scale),targ_perf);
 plot(xFit,yFit)
+[r,p] = corr(table2array(targ_scale),targ_perf);
+xlabel('Target Size')
+ylabel('Target Performance')
+title(sprintf('Corr = %0.5f, p = %0.5f',r,p))
+
+%% targ/dist perf correlation with size
+targ_perf = perf_array(:);
+size_diff_all = size_diff(:);
+
+rem_idx = find(targ_perf == min(targ_perf));
+
+figure();
+scatter(size_diff_all,targ_perf, 'o')
+hold on;
+[perf1,perf2,xFit,yFit] = corr_fun(size_diff_all,targ_perf);
+plot(xFit,yFit)
+[r,p] = corr(size_diff_all,targ_perf);
+xlabel('Target - Distractor Size')
+ylabel('Target Distractor Pair Performance')
+title(sprintf('Corr = %0.5f, p = %0.5f',r,p))
