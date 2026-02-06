@@ -168,7 +168,7 @@ exp_colors = flipud([179,128,206;...
 targ_perf = perf_array(:);
 size_diff_all = size_diff(:);
 
-rem_idx = find(targ_perf == min(targ_perf));
+% rem_idx = find(targ_perf == min(targ_perf));
 
 figure();
 scatter(size_diff_all,targ_perf, 'o','filled','MarkerFaceColor',exp_colors(1,:),'MarkerFaceAlpha',0.6,'MarkerEdgeColor','k')
