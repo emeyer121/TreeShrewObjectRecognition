@@ -13,7 +13,7 @@
 
 %% Where is ToolboxToolbox installed?
 
-% a reasonable default, or pick your own
+% Set string to MATLAB path where ToolboxToolbox is located
 pathString = '/mnt/DataDrive3/emeyer/MATLAB/';
 if isempty(pathString)
     % userpath() was not set, try to choose a "home" folder

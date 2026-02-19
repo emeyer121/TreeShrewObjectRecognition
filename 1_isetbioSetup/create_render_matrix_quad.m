@@ -16,12 +16,22 @@ dataSavePath = '/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/';
 species = 'treeshrew';
 imOrigSize = 20;
 sceneFOVpadding = 1.2;
+
+% Set image padding
 imBorder = (ceil(imOrigSize*sceneFOVpadding) - imOrigSize)/2;
 imSize = ceil(imOrigSize + imBorder*2);
 
+% Integration time
+integrationTimeSeconds = 1/1000;
+
+% Set mean luminance
+meanLuminanceCdPerM2 = 20;
+
+% Can loop through multiple image sizes
 sceneFOVs = [2.5];
 
 for sfd = 1:length(sceneFOVs)
+    % Specify mosaic size and padding amounts
     sceneFOVdegs = sceneFOVs(sfd);
     borderSize = ((sceneFOVpadding*sceneFOVdegs) - sceneFOVdegs)/2;
     mosaicSize = sceneFOVdegs+borderSize*2;
@@ -66,12 +76,6 @@ for sfd = 1:length(sceneFOVs)
             yBlockSize = (length(col_val)/imSize)*mosaicSize;
             xBlockSize = (length(row_val)/imSize)*mosaicSize;
             mosaicFOVdegs = [xBlockSize yBlockSize];
-
-            % Integration time
-            integrationTimeSeconds = 1/1000;
-
-            % Set mean luminance
-            meanLuminanceCdPerM2 = 20;
 
             % Set up strings for file saving
             FOV_str = num2str(sceneFOVdegs);
@@ -124,8 +128,8 @@ for sfd = 1:length(sceneFOVs)
             [coneExcitations, linearStimulusImage] = retina.compute(testImage);
 
             % Compute render matrix. May take a long time depending on
-            % size of image! I have updated some parallel processing
-            % allocations within ConeResponseCmosaic script.
+            % size of image! See create_render_matrix for details
+            % regarding parallel processing constraints
             renderMtx = retina.forwardRender(blockSize, true, true, 'useDoublePrecision', true);
             renderMtx = double(renderMtx);
 
