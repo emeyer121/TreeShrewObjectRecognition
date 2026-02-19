@@ -89,4 +89,4 @@ end
 % Also update in forwardRender: parfor (idx = 1:length(testLinear(:)), N)
 renderMtx = retina.forwardRender(imageSize, true, true, 'useDoublePrecision', true);
 renderMtx = double(renderMtx);
-save([dataSavePath,'renderMatrices_test/',species,'/render_',FOV_str,'.mat'],'renderMtx','-v7.3')
+save([dataSavePath,'renderMatrices/',species,'/render_',FOV_str,'.mat'],'renderMtx','-v7.3')
