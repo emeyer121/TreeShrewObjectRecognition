@@ -126,7 +126,7 @@ def process_block(args):
         allImgs = os.listdir('../stimulusSets/'+imageSetName+'/'+cc+'/')
         # exclude images that start with '.'
         allImgs = [img for img in allImgs if not img.startswith('.') and (img.endswith('.jpg') or img.endswith('.bmp') or img.endswith('.png'))]
-        allImgs = allImgs[201:301]
+        # allImgs = allImgs[0:100] # Limit number of images if categories are large
         nImgs = len(allImgs)
 
         # Set up tensor that will be used for reconstruction of all images within category
@@ -135,6 +135,7 @@ def process_block(args):
         # Iterate through all images in category, load and preprocess
         for idx2,ii in enumerate(allImgs):
             img = cv2.imread('../stimulusSets/'+imageSetName+'/' + cc + '/' + ii)
+
             # convert image to grayscale and add border by replicating edges (maybe change this in the future)
             # repeat channel dimensions if grayscale to keep dims the same
             if makeGrayscale:
@@ -157,9 +158,9 @@ def process_block(args):
 
                 img_torch = torch.tensor(crop_img.astype(np.float32)).to(device)
                 img_torch = img_torch.unsqueeze(0).repeat(3, 1, 1)  # Add channel dimension and repeat to match 3 channels
-            else:
 
-                # If keeping aas RGB, just add border by replicating edges and convert to torch tensor
+            else:
+                # If keeping as RGB, just add border by replicating edges and convert to torch tensor
                 # Need to test this******
                 img = cv2.resize(img, (imOrig, imOrig))
 
@@ -177,7 +178,7 @@ def process_block(args):
                 if np.shape(crop_img)[1] - blockSize[1] == 1:
                     crop_img = crop_img[:, :int(blockSize[1])]
 
-                img_torch = torch.tensor(replicate.astype(np.float32)).to(device)
+                img_torch = torch.tensor(crop_img.astype(np.float32)).to(device)
                 img_torch = img_torch.permute(2, 0, 1)  # Change to (C, H, W) format
 
             # Add preprocessed image to tensor for reconstruction
@@ -194,9 +195,9 @@ def process_block(args):
         for idx in range(recon.shape[0]):
             temp = gamma_correct(recon[idx])
 
-            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad/{cc}/Xecc{eccX_val}_Yecc{eccY_val}'):
-                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad/{cc}/Xecc{eccX_val}_Yecc{eccY_val}')
-            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad/{cc}/Xecc{eccX_val}_Yecc{eccY_val}/{allImgs[idx]}',np.uint8(temp*255))
+            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad_test/{cc}/Xecc{eccX_val}_Yecc{eccY_val}'):
+                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad_test/{cc}/Xecc{eccX_val}_Yecc{eccY_val}')
+            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad_test/{cc}/Xecc{eccX_val}_Yecc{eccY_val}/{allImgs[idx]}',np.uint8(temp*255))
     
     return f"Block ({row_idx}, {col_idx}) completed"
 
@@ -248,6 +249,7 @@ def merge_blocks():
         
         for idx,ii in enumerate(allImgs):
             init_img = np.zeros((imOrig, imOrig, 3), dtype=np.float32)
+            print(init_img.shape)
 
             # Iterate through blocks and merge reconstructions by cropping borders and stitching together
             for row_idx in range(1, nBlock+1):
@@ -292,30 +294,31 @@ def merge_blocks():
                     init_img[np.ix_(row_block, col_block)] = img_crop
 
             # Save merged image in new directory organized by category/merged images
-            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged'):
-                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged')
-            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged/{allImgs[idx]}',np.uint8(init_img))
+            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad_test/{norm_cat}/merged'):
+                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad_test/{norm_cat}/merged')
+            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad_test/{norm_cat}/merged/{allImgs[idx]}',np.uint8(init_img))
 
 # initialize species, image sizes
 torch.cuda.set_device(1)
 species = 'treeshrew'
 sceneFOVdegs = 10
-imageSetName = 'Camel_v2_test_nn/original'
+imageSetName = 'Kiani_ImageSet'
 renderLoadPath = '/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/renderMatrices/'
 sceneFOVscale = 1.2
 imOrig = 227
-imBorder = int((np.ceil(imOrig*sceneFOVscale) - imOrig)/2)
-imSize = np.ceil(imOrig + imBorder*2)
+imBorder = int((np.ceil(imOrig*sceneFOVscale) - imOrig)/2) #23
+print(imBorder)
+imSize = np.ceil(imOrig + imBorder*2) #273
 
-borderSize = ((sceneFOVscale*sceneFOVdegs) - sceneFOVdegs)/2
-mosaicSize = sceneFOVdegs+borderSize*2
+borderSize = ((sceneFOVscale*sceneFOVdegs) - sceneFOVdegs)/2 #1
+mosaicSize = sceneFOVdegs+borderSize*2 #12
 
 # Initialize reconstruction iterations
 num_it = 4000
 
 # Parameters for preprocessing images
-makeGrayscale = True
-norm_img = False
+makeGrayscale = False
+norm_img = True
 target_luminance = 0.5
 target_contrast = 0.1
 
@@ -327,8 +330,8 @@ elif sceneFOVdegs >= 1 and sceneFOVdegs < 5:
 elif sceneFOVdegs >=5:
     nBlock = 6
 
-blockLen = imOrig/nBlock
-blockSize = [int(np.ceil(blockLen+imBorder*2)), int(np.ceil(blockLen+imBorder*2)), 3]
+blockLen = imOrig/nBlock #37.833
+blockSize = [int(np.ceil(blockLen+imBorder*2)), int(np.ceil(blockLen+imBorder*2)), 3] #84
 
 # Run the parallelized version
 if __name__ == '__main__':

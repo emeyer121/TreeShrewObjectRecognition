@@ -129,9 +129,9 @@ def reconstruct_images(file_path, imageSetName, lbda, num_it, imOrig, imSize, im
             temp = temp[imBorderSize:imBorderSize+imOrig, imBorderSize:imBorderSize+imOrig, :]
 
             # if directory doesn't exist, create directory
-            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_test/{cc}'):
-                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_test/{cc}')
-            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_test/{cc}/{allImgs[idx]}',np.uint8(temp*255))
+            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}/{cc}'):
+                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}/{cc}')
+            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}/{cc}/{allImgs[idx]}',np.uint8(temp*255))
 
 # initialization parameters
 species = 'treeshrew'
