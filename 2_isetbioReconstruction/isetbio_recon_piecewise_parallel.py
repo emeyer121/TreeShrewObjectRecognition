@@ -112,8 +112,9 @@ def process_block(args):
     sparse = SparseEstimator(device, render_test.T, basis, prior['mu'].T, lbda=lbda)
 
     # Initialize number of categories based on folders in imageSetName directory
-    allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
-    allCats = [cat for cat in allCats if not cat.startswith('.')]
+    # allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
+    # allCats = [cat for cat in allCats if not cat.startswith('.')]
+    allCats = ['register_rotate']
 
     # Option to normalize image luminance and contrast across categories
     if norm_img:
@@ -126,7 +127,7 @@ def process_block(args):
         allImgs = os.listdir('../stimulusSets/'+imageSetName+'/'+cc+'/')
         # exclude images that start with '.'
         allImgs = [img for img in allImgs if not img.startswith('.') and (img.endswith('.jpg') or img.endswith('.bmp') or img.endswith('.png'))]
-        # allImgs = allImgs[0:100] # Limit number of images if categories are large
+        allImgs = allImgs[500:501] # Limit number of images if categories are large
         nImgs = len(allImgs)
 
         # Set up tensor that will be used for reconstruction of all images within category
@@ -195,9 +196,9 @@ def process_block(args):
         for idx in range(recon.shape[0]):
             temp = gamma_correct(recon[idx])
 
-            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad_test/{cc}/Xecc{eccX_val}_Yecc{eccY_val}'):
-                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad_test/{cc}/Xecc{eccX_val}_Yecc{eccY_val}')
-            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad_test/{cc}/Xecc{eccX_val}_Yecc{eccY_val}/{allImgs[idx]}',np.uint8(temp*255))
+            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad/{cc}/Xecc{eccX_val}_Yecc{eccY_val}'):
+                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad/{cc}/Xecc{eccX_val}_Yecc{eccY_val}')
+            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad/{cc}/Xecc{eccX_val}_Yecc{eccY_val}/{allImgs[idx]}',np.uint8(temp*255))
     
     return f"Block ({row_idx}, {col_idx}) completed"
 
@@ -230,6 +231,7 @@ def merge_blocks():
     # Iterate through categories (either normalized or original)
     allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
     allCats = [cat for cat in allCats if not cat.startswith('.')]
+    allCats = ['register_rotate']
 
     for idx1,cc in enumerate(allCats):
 
@@ -249,7 +251,6 @@ def merge_blocks():
         
         for idx,ii in enumerate(allImgs):
             init_img = np.zeros((imOrig, imOrig, 3), dtype=np.float32)
-            print(init_img.shape)
 
             # Iterate through blocks and merge reconstructions by cropping borders and stitching together
             for row_idx in range(1, nBlock+1):
@@ -294,15 +295,15 @@ def merge_blocks():
                     init_img[np.ix_(row_block, col_block)] = img_crop
 
             # Save merged image in new directory organized by category/merged images
-            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad_test/{norm_cat}/merged'):
-                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad_test/{norm_cat}/merged')
-            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad_test/{norm_cat}/merged/{allImgs[idx]}',np.uint8(init_img))
+            if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged'):
+                os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged')
+            cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged/{allImgs[idx]}',np.uint8(init_img))
 
 # initialize species, image sizes
 torch.cuda.set_device(1)
 species = 'treeshrew'
 sceneFOVdegs = 10
-imageSetName = 'Kiani_ImageSet'
+imageSetName = 'Camel_v2_test_nn'
 renderLoadPath = '/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/renderMatrices/'
 sceneFOVscale = 1.2
 imOrig = 227
@@ -318,7 +319,7 @@ num_it = 4000
 
 # Parameters for preprocessing images
 makeGrayscale = False
-norm_img = True
+norm_img = False
 target_luminance = 0.5
 target_contrast = 0.1
 
@@ -336,5 +337,5 @@ blockSize = [int(np.ceil(blockLen+imBorder*2)), int(np.ceil(blockLen+imBorder*2)
 # Run the parallelized version
 if __name__ == '__main__':
     # ThreadPoolExecutor (better for GPU-bound tasks)
-    run_parallel_threads()
+    # run_parallel_threads()
     merge_blocks()
