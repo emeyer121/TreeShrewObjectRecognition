@@ -84,7 +84,7 @@ targ_scale = targ_data.tab(targ_vals+1,'Scale');
 dist_scale = dist_data.tab(dist_vals+1,'Scale');
 
 [targ_sort, targ_sort_idx] = sort(table2array(targ_scale),'descend');
-[dist_sort, dist_sort_idx] = sort(table2array(dist_scale),'descend');
+[dist_sort, dist_sort_idx] = sort(table2array(dist_scale),'ascend');
 
 perf_array_sort = perf_array(targ_sort_idx,dist_sort_idx);
 perf_array_targ = mean(perf_array_sort,2);
