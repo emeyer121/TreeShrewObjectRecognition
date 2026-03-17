@@ -38,6 +38,7 @@
 *.npy
 *.wav
 *.pth
+*.xlsx
 
 # Images #
 ##########
