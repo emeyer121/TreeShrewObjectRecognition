@@ -38,6 +38,7 @@
 *.wav
 *.pth
 *.xlsx
+*.mat
 
 # Images #
 ##########
