@@ -69,3 +69,5 @@ Thumbs.db
 
 # Folders #
 *.pyc
+/mouse_vision/*
+/mouse-vision/*
