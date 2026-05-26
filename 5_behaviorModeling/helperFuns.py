@@ -58,7 +58,7 @@ def get_train_targdist_data(datafilepath,task):
                             (numpy_array[:,column_names=='T_Expt_ID'] == tt) &
                             (numpy_array[:,column_names=='D_Expt_ID'] == dd)])
 
-    return train_targ_idx, train_dist_idx, avg_perf
+    return train_targ_idx, train_dist_idx, avg_perf, targ_idx, dist_idx
 
 def structure_isetbio_data(img_files, Y_labels, unique_labels, input_size):
     """
@@ -74,6 +74,7 @@ def structure_isetbio_data(img_files, Y_labels, unique_labels, input_size):
     """
 
     n_imgs = len(img_files)
+    print(n_imgs)
     
     # Initialize an array to store all preprocessed images
     DNN_input = np.zeros((input_size[0], input_size[1], 3, n_imgs))
