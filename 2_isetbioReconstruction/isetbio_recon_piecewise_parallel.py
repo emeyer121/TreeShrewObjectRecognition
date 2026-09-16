@@ -112,9 +112,9 @@ def process_block(args):
     sparse = SparseEstimator(device, render_test.T, basis, prior['mu'].T, lbda=lbda)
 
     # Initialize number of categories based on folders in imageSetName directory
-    # allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
-    # allCats = [cat for cat in allCats if not cat.startswith('.')]
-    allCats = ['register_rotate']
+    allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
+    allCats = [cat for cat in allCats if not cat.startswith('.')]
+    # allCats = ['register_rotate']
 
     # Option to normalize image luminance and contrast across categories
     if norm_img:
@@ -127,7 +127,7 @@ def process_block(args):
         allImgs = os.listdir('../stimulusSets/'+imageSetName+'/'+cc+'/')
         # exclude images that start with '.'
         allImgs = [img for img in allImgs if not img.startswith('.') and (img.endswith('.jpg') or img.endswith('.bmp') or img.endswith('.png'))]
-        allImgs = allImgs[500:501] # Limit number of images if categories are large
+        # allImgs = allImgs[500:501] # Limit number of images if categories are large
         nImgs = len(allImgs)
 
         # Set up tensor that will be used for reconstruction of all images within category
@@ -231,7 +231,7 @@ def merge_blocks():
     # Iterate through categories (either normalized or original)
     allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
     allCats = [cat for cat in allCats if not cat.startswith('.')]
-    allCats = ['register_rotate']
+    # allCats = ['register_rotate']
 
     for idx1,cc in enumerate(allCats):
 
@@ -303,7 +303,7 @@ def merge_blocks():
 torch.cuda.set_device(1)
 species = 'treeshrew'
 sceneFOVdegs = 10
-imageSetName = 'Camel_v2_test_nn'
+imageSetName = 'Camel_novel_v2_test_nn'
 renderLoadPath = '/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/renderMatrices/'
 sceneFOVscale = 1.2
 imOrig = 227
@@ -337,5 +337,5 @@ blockSize = [int(np.ceil(blockLen+imBorder*2)), int(np.ceil(blockLen+imBorder*2)
 # Run the parallelized version
 if __name__ == '__main__':
     # ThreadPoolExecutor (better for GPU-bound tasks)
-    # run_parallel_threads()
+    run_parallel_threads()
     merge_blocks()
