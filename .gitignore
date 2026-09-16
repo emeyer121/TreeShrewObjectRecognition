@@ -55,6 +55,7 @@
 *.svg
 *.psb
 *.gif
+*.json
 
 # OS generated files #
 ######################
@@ -70,4 +71,4 @@ Thumbs.db
 # Folders #
 *.pyc
 /mouse_vision/*
-/mouse-vision/*
+/5_behaviorModeling/runs/*
