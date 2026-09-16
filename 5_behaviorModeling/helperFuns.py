@@ -33,7 +33,7 @@ def get_train_targdist_data(datafilepath,task):
     # if task == 'Camel_v2_test_nn':
     #     train_targ_idx = train_targ_idx[train_targ_idx != 9]
 
-    print(train_targ_idx)
+    # print(train_targ_idx)
 
     dist_idx = np.unique(numpy_array[shrewID_idx,column_names=='D_Expt_ID'])
     test_dist_idx = np.unique(numpy_array[shrewID_idx,column_names=='TestDist'])
@@ -41,7 +41,7 @@ def get_train_targdist_data(datafilepath,task):
 
     # Get targ_idx numbers that exclude those in test_targ_idx and nov_targ_id
     train_dist_idx = np.setdiff1d(dist_idx, np.union1d(test_dist_idx, nov_dist_idx))
-    print(train_dist_idx)
+    # print(train_dist_idx)
 
     avg_perf = np.full((len(train_targ_idx), len(train_dist_idx)), np.nan)
     for tt_idx, tt in enumerate(train_targ_idx):
