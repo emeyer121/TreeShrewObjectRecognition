@@ -71,4 +71,5 @@ Thumbs.db
 # Folders #
 *.pyc
 /mouse_vision/*
+/helperFunctions/*
 /5_behaviorModeling/runs/*
