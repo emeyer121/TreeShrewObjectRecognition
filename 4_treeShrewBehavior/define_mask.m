@@ -1,4 +1,4 @@
-function [stats_side, stats_cent, mid_side, mid_cent] = define_mask(vidPath, image)
+function [stats_side, stats_cent, mid_side, mid_cent, I_side] = define_mask(vidPath, image)
 
 fig1 = figure();
 imshow(image)
@@ -56,7 +56,7 @@ cent_on = find((mintensity>int_th-0.3) & (mintensity<int_th+0.5));
 % this is the real image we will work with now that we are using frames
 % with clearly defined images on the screen
 ex_tr = 1;
-I = uint8(mean(dlcvideo(:,:,:,side_on(ex_tr)),4));
+I_side = uint8(mean(dlcvideo(:,:,:,side_on(ex_tr)),4));
 
 % binarize the image with imflatfield and imadjust
 sigma = 30;
@@ -87,7 +87,7 @@ while ~strcmp(targets_good,'Y')
     imagesc(uint8(dlcvideo(:,:,:,side_on(ex_tr)))); %display mean image across entire movie
     hold on;
 
-    grayI = rgb2gray(I);
+    grayI = rgb2gray(I_side);
     J = imadjust(imflatfield(grayI,sigma,'FilterSize',115))<filtthresh;
     
     % now use this function regionprops which extracts statistics for "objects"
@@ -130,7 +130,7 @@ end
 % this is the real image we will work with now that we are using frames
 % with clearly defined images on the screen
 ex_tr = 1;
-I = uint8(mean(dlcvideo(:,:,:,cent_on(ex_tr)),4));
+I_cent = uint8(mean(dlcvideo(:,:,:,cent_on(ex_tr)),4));
 
 % binarize the image with imflatfield and imadjust
 sigma = 30;
@@ -156,7 +156,7 @@ while ~strcmp(targets_good,'Y')
     imagesc(uint8(dlcvideo(:,:,:,cent_on(ex_tr)))); %display mean image across entire movie
     hold on;
 
-    grayI = rgb2gray(I);
+    grayI = rgb2gray(I_cent);
     J = imadjust(imflatfield(grayI,sigma,'FilterSize',115))<filtthresh;
     
     % now use this function regionprops which extracts statistics for "objects"

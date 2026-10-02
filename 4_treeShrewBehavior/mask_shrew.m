@@ -133,7 +133,7 @@ for i = 1:length(dlcFrame_side)
     if lbl > 0
         finalMask = (L == lbl);
     else
-        warning('Target point is not on the mask; falling back to largest region.');
+        % warning('Target point is not on the mask; falling back to largest region.');
         finalMask = bwareafilt(masked_regions, 1);
     end
     finalMask = imfill(finalMask, 'holes');
@@ -143,6 +143,9 @@ end
 
 shrewMask_cent = nan(size(dlcFrame_cent{1},1),size(dlcFrame_cent{1},2),length(dlcFrame_cent));
 for i = 1:length(dlcFrame_cent)
+    if isempty(dlcFrame_cent{i})
+        break
+    end
 
     I = dlcFrame_cent{i}(:,:,:,round(end/2));
     grayI = rgb2gray(I);
@@ -180,7 +183,7 @@ for i = 1:length(dlcFrame_cent)
     if lbl > 0
         finalMask = (L == lbl);
     else
-        warning('Target point is not on the mask; falling back to largest region.');
+        % warning('Target point is not on the mask; falling back to largest region.');
         finalMask = bwareafilt(masked_regions, 1);
     end
     finalMask = imfill(finalMask, 'holes');

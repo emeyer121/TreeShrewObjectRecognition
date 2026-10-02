@@ -133,7 +133,6 @@ camel_side = nan(1, length(side_on));
 imageID    = nan(1, length(side_on));
 
 for curr_tr = 1:length(side_on)
-    disp(curr_tr)
 
     % take average over all frames within a trial
     frames_avg = uint8(mean(dlcFrame_side{curr_tr},4));
