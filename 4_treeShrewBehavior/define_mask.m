@@ -45,6 +45,12 @@ mintensity = mint - mean(mint);
 int_th = -(max(abs(mintensity))-0.5);
 % int_th = -0.6;
 
+figure();
+plot(mintensity)
+yline(int_th)
+yline(int_th-0.3)
+yline(int_th+0.3)
+
 % make cells with the frames for each trial in im_on
 side_on = find(mintensity<int_th);
 if length(side_on)==length(mintensity)
@@ -55,7 +61,7 @@ cent_on = find((mintensity>int_th-0.3) & (mintensity<int_th+0.5));
 
 % this is the real image we will work with now that we are using frames
 % with clearly defined images on the screen
-ex_tr = 1;
+ex_tr = 2;
 I_side = uint8(mean(dlcvideo(:,:,:,side_on(ex_tr)),4));
 
 % binarize the image with imflatfield and imadjust
@@ -69,7 +75,6 @@ num_targetpoints_to_define = 2;
 
 % now the user can click the middle of the two stimuli so I can extract the
 % objects with centroids closest to where we click
-clf('reset')
 fig3 = figure();
 imagesc(uint8(dlcvideo(:,:,:,side_on(ex_tr)))); %display mean image across entire movie
 title('Click on image to identify left then right stimulus.')
@@ -129,7 +134,7 @@ end
 
 % this is the real image we will work with now that we are using frames
 % with clearly defined images on the screen
-ex_tr = 1;
+ex_tr = 2;
 I_cent = uint8(mean(dlcvideo(:,:,:,cent_on(ex_tr)),4));
 
 % binarize the image with imflatfield and imadjust
