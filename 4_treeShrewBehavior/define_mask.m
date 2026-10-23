@@ -139,7 +139,6 @@ I_cent = uint8(mean(dlcvideo(:,:,:,cent_on(ex_tr)),4));
 
 % binarize the image with imflatfield and imadjust
 sigma = 30;
-filtthresh = 140;
 
 % now the user can click the middle of the two stimuli so I can extract the
 % objects with centroids closest to where we click
