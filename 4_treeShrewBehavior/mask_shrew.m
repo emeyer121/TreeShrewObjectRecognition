@@ -20,6 +20,35 @@ title('Click on image to identify shrew.')
 [target_x,target_y]=ginput(num_targetpoints_to_define);
 close(fig3);
 
+[imgH_excl, imgW_excl] = size(rgb2gray(I));   % full image size
+
+fig_bound = figure();
+imagesc(I);
+colormap(gray);
+title({'Click TWO points (left -> right) to define the upper exclusion boundary.', ...
+       'Everything ABOVE this line will be removed from every mask.'});
+
+[bnd_x, bnd_y] = ginput(2);     % two clicks define the line
+
+% Draw the line so the user can confirm it looks right
+hold on;
+plot(bnd_x, bnd_y, 'r-', 'LineWidth', 2);
+title('Boundary line shown in red. Close window to continue.');
+waitfor(fig_bound);              % user closes the window to proceed
+
+% Build a logical mask: TRUE = keep, FALSE = exclude (above the line)
+exclusionMask = true(imgH_excl, imgW_excl);
+
+x1 = bnd_x(1);  y1 = bnd_y(1);
+x2 = bnd_x(2);  y2 = bnd_y(2);
+
+for col = 1:imgW_excl
+    % y-value of the boundary line at this column (linear interpolation)
+    lineY = y1 + (y2 - y1) * (col - x1) / (x2 - x1);
+    rowsToExclude = 1 : max(0, floor(lineY));   % rows above the line
+    exclusionMask(rowsToExclude, col) = false;
+end
+
 while ~strcmp(targets_good,'Y')
     % clf('reset')
     % fig3 = figure();
@@ -78,13 +107,14 @@ while ~strcmp(targets_good,'Y')
         finalMask = bwareafilt(masked_regions, 1);
     end
     finalMask = imfill(finalMask, 'holes');
+    finalMask = finalMask & exclusionMask; 
     
     clf('reset')
     fig3 = figure();
     imshow(labeloverlay(I, finalMask, 'Colormap', [1 0 0], 'Transparency', 0.6));
     title('Binary mask inside convex hull');
     
-    targets_good=input('Do the targets look good? Y/N: ','s');
+    targets_good=input('Does the mask look good? Y/N: ','s');
     if ~strcmp(targets_good,'Y')
         fprintf('Redoing target definition \n')
         filtthresh = input(['New filter threshold (previously ',num2str(filtthresh),'): ']);
@@ -137,6 +167,7 @@ for i = 1:length(dlcFrame_side)
         finalMask = bwareafilt(masked_regions, 1);
     end
     finalMask = imfill(finalMask, 'holes');
+    finalMask = finalMask & exclusionMask; 
     shrewMask_side(:,:,i) = finalMask;
 
 end
@@ -187,6 +218,7 @@ for i = 1:length(dlcFrame_cent)
         finalMask = bwareafilt(masked_regions, 1);
     end
     finalMask = imfill(finalMask, 'holes');
+    finalMask = finalMask & exclusionMask; 
     shrewMask_cent(:,:,i) = finalMask;
 
 end
