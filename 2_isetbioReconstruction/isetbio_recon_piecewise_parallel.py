@@ -47,33 +47,31 @@ def normalize_image(imageSetName, allCats, makeGrayscale, target_luminance, targ
         new_allCats.append(norm_cat)
     return new_allCats
 
+def block_geometry(row_idx, col_idx):
+    """Block start indices (0-based, into the padded image) and eccentricity strings.
+    Mirrors create_render_matrix_piecewise.m:
+        col_val = (col_idx-1)*blockLen + (1:blockSize1)
+        eccX =  (mean(col_val) - imCenter) * pixDeg
+        eccY = -(mean(row_val) - imCenter) * pixDeg
+    """
+    row_start = (row_idx-1)*blockLen
+    col_start = (col_idx-1)*blockLen
+    col_val = col_start + np.arange(1, blockSize1+1)   # 1-based, as in MATLAB
+    row_val = row_start + np.arange(1, blockSize1+1)
+    eccX =  (np.mean(col_val) - imCenter) * pixDeg
+    eccY = -(np.mean(row_val) - imCenter) * pixDeg
+    # '%g' matches MATLAB num2str (e.g. 2 -> '2', not '2.0')
+    eccX_val = f'{np.round(eccX, 2):g}'
+    eccY_val = f'{np.round(eccY, 2):g}'
+    return row_start, col_start, eccX_val, eccY_val
+
 def process_block(args):
     """Process a single block - this function will be called in parallel"""
-    row_idx, col_idx, species, sceneFOVdegs, imageSetName, mosaicSize, imSize, blockLen, imBorder, blockSize, imOrig, makeGrayscale, target_luminance, target_contrast, norm_img, renderLoadPath = args
-    
-    # Calculate column indices corresponding to block
-    if col_idx == 1:
-        col_val = np.arange(1,np.ceil(col_idx*blockLen+imBorder*2)+1)
-    elif col_idx==nBlock:
-        col_val = np.arange(np.ceil((col_idx-1)*blockLen), imSize+1)
-    else:
-        col_val = np.arange((col_idx-1)*blockLen,col_idx*blockLen+imBorder*2)
+    row_idx, col_idx, species, sceneFOVdegs, imageSetName, blockLen, imBorder, blockSize, imOrig, makeGrayscale, target_luminance, target_contrast, norm_img, renderLoadPath = args
 
-    # Calculate row indices corresponding to block
-    if row_idx == 1:
-        row_val = np.arange(1,np.ceil(row_idx*blockLen+imBorder*2)+1)
-    elif row_idx==nBlock:
-        row_val = np.arange(np.ceil((row_idx-1)*blockLen), imSize+1)
-    else:
-        row_val = np.arange((row_idx-1)*blockLen,row_idx*blockLen+imBorder*2)
-
-    # Compute eccentricity values for specific block center
-    eccY = ((np.mean(col_val)-(imSize/2))*mosaicSize/2)/(imSize/2)
-    eccX = ((np.mean(row_val)-(imSize/2))*mosaicSize/2)/(imSize/2)
+    # Block position in padded image and eccentricity of block center
+    row_start, col_start, eccX_val, eccY_val = block_geometry(row_idx, col_idx)
     FOV_val = str(sceneFOVdegs)
-
-    eccX_val = str(np.round(eccX,2))
-    eccY_val = str(np.round(eccY,2))
 
     # Recommendation for lambda values based on species and scene FOV
     if species == 'human':
@@ -86,10 +84,24 @@ def process_block(args):
     elif species == 'treeshrew':
         if sceneFOVdegs < 5:
             lbda = 1e-2
-        elif sceneFOVdegs >= 5:
+        elif sceneFOVdegs >= 5 and sceneFOVdegs <= 10:
             lbda = 1e-2
+        elif sceneFOVdegs > 10:
+            # chosen from lambda test at 30 deg (removes color artifact seen at 1e-2)
+            lbda = 2.5e-2
 
     file_path = f'{renderLoadPath}{species}_blocked/render_{FOV_val}_Xecc{eccX_val}_Yecc{eccY_val}.mat'
+
+    # Skip blocks already reconstructed with these same settings (a marker file is
+    # written only after every category of the block is saved), and blocks whose
+    # render matrix does not exist yet. Delete the .done folder to force a rerun.
+    outSet = imageSetName + ('_norm' if norm_img else '')
+    marker = f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{outSet}_quad/.done/Xecc{eccX_val}_Yecc{eccY_val}.txt'
+    stamp = f'lambda={lbda} num_it={num_it} makeGrayscale={makeGrayscale} norm_img={norm_img}'
+    if os.path.exists(marker) and open(marker).read().strip() == stamp:
+        return 'SKIP_DONE', f"Block ({row_idx}, {col_idx}) already reconstructed ({stamp}), skipping"
+    if not os.path.exists(file_path):
+        return 'NOT_READY', f"Block ({row_idx}, {col_idx}) render matrix not ready yet, skipping"
 
     # load denoiser
     main.args.model_path = './assets/conv3_ln.pt'
@@ -113,7 +125,8 @@ def process_block(args):
 
     # Initialize number of categories based on folders in imageSetName directory
     allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
-    allCats = [cat for cat in allCats if not cat.startswith('.')]
+    allCats = [cat for cat in allCats if not cat.startswith('.') and os.path.isdir(f'../stimulusSets/{imageSetName}/{cat}')]
+    allCats = [cat for cat in allCats if not cat.startswith('binary')]  # skip binary_object, binary_object_scaled
     # allCats = ['register_rotate']
 
     # Option to normalize image luminance and contrast across categories
@@ -146,16 +159,12 @@ def process_block(args):
                 unique_elements, counts = np.unique(img, return_counts=True)
                 most_frequent_index = np.argmax(counts)
                 borderVal = int(unique_elements[most_frequent_index])
-                replicate = cv2.copyMakeBorder(img, imBorder, imBorder, imBorder, imBorder, borderType=cv2.BORDER_CONSTANT, value=borderVal)
+                # Pad: imBorder on top/left, imBorder+1 on bottom/right (279x279)
+                replicate = cv2.copyMakeBorder(img, imBorder, imBorder+1, imBorder, imBorder+1, borderType=cv2.BORDER_CONSTANT, value=borderVal)
                 replicate = replicate / 255.0
 
                 replicate = replicate.astype(np.float32)
-                crop_img = replicate[row_val.astype(int)-1, :][:, col_val.astype(int)-1]
-
-                if np.shape(crop_img)[0] - blockSize[0] == 1:
-                    crop_img = crop_img[:int(blockSize[0]), :]
-                if np.shape(crop_img)[1] - blockSize[1] == 1:
-                    crop_img = crop_img[:, :int(blockSize[1])]
+                crop_img = replicate[row_start:row_start+blockSize[0], col_start:col_start+blockSize[1]]
 
                 img_torch = torch.tensor(crop_img.astype(np.float32)).to(device)
                 img_torch = img_torch.unsqueeze(0).repeat(3, 1, 1)  # Add channel dimension and repeat to match 3 channels
@@ -168,16 +177,12 @@ def process_block(args):
                 unique_elements, counts = np.unique(img, return_counts=True)
                 most_frequent_index = np.argmax(counts)
                 borderVal = int(unique_elements[most_frequent_index])
-                replicate = cv2.copyMakeBorder(img, imBorder, imBorder, imBorder, imBorder, borderType=cv2.BORDER_CONSTANT, value=borderVal)
+                # Pad: imBorder on top/left, imBorder+1 on bottom/right (279x279)
+                replicate = cv2.copyMakeBorder(img, imBorder, imBorder+1, imBorder, imBorder+1, borderType=cv2.BORDER_CONSTANT, value=(borderVal, borderVal, borderVal))
                 replicate = replicate / 255.0
 
                 replicate = replicate.astype(np.float32)
-                crop_img = replicate[row_val.astype(int)-1, :][:, col_val.astype(int)-1]
-
-                if np.shape(crop_img)[0] - blockSize[0] == 1:
-                    crop_img = crop_img[:int(blockSize[0]), :]
-                if np.shape(crop_img)[1] - blockSize[1] == 1:
-                    crop_img = crop_img[:, :int(blockSize[1])]
+                crop_img = replicate[row_start:row_start+blockSize[0], col_start:col_start+blockSize[1]]
 
                 img_torch = torch.tensor(crop_img.astype(np.float32)).to(device)
                 img_torch = img_torch.permute(2, 0, 1)  # Change to (C, H, W) format
@@ -199,15 +204,20 @@ def process_block(args):
             if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad/{cc}/Xecc{eccX_val}_Yecc{eccY_val}'):
                 os.makedirs(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad/{cc}/Xecc{eccX_val}_Yecc{eccY_val}')
             cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName}_quad/{cc}/Xecc{eccX_val}_Yecc{eccY_val}/{allImgs[idx]}',np.uint8(temp*255))
-    
-    return f"Block ({row_idx}, {col_idx}) completed"
+
+    # Mark block as finished (only reached if every category saved without error)
+    os.makedirs(os.path.dirname(marker), exist_ok=True)
+    with open(marker, 'w') as fh:
+        fh.write(stamp)
+
+    return 'DONE', f"Block ({row_idx}, {col_idx}) completed"
 
 def run_parallel_threads():
     # Create list of arguments for each block
     block_args = []
     for row_idx in range(1, nBlock+1):
         for col_idx in range(1, nBlock+1):
-            args = (row_idx, col_idx, species, sceneFOVdegs, imageSetName, mosaicSize, imSize, blockLen, imBorder, 
+            args = (row_idx, col_idx, species, sceneFOVdegs, imageSetName, blockLen, imBorder,
                     blockSize, imOrig, makeGrayscale, target_luminance, target_contrast, norm_img, renderLoadPath)
             block_args.append(args)
     
@@ -215,22 +225,31 @@ def run_parallel_threads():
     n_threads = 6 # Limit threads to avoid GPU memory issues
     print(f"Using {n_threads} threads for {len(block_args)} blocks")
     
+    n_incomplete = 0
     with ThreadPoolExecutor(max_workers=n_threads) as executor:
         future_to_block = {executor.submit(process_block, args): args for args in block_args}
-        
+
         for future in as_completed(future_to_block):
             args = future_to_block[future]
             try:
-                result = future.result()
-                print(result)
+                status, msg = future.result()
+                print(msg, flush=True)
+                if status == 'NOT_READY':
+                    n_incomplete += 1
             except Exception as exc:
-                print(f'Block {args[0:2]} generated an exception: {exc}')
+                n_incomplete += 1
+                print(f'Block {args[0:2]} generated an exception: {exc}', flush=True)
+
+    # True only if every block is now reconstructed
+    print(f'{len(block_args) - n_incomplete} of {len(block_args)} blocks reconstructed', flush=True)
+    return n_incomplete == 0
 
 def merge_blocks():
 
     # Iterate through categories (either normalized or original)
     allCats = os.listdir('../stimulusSets/'+imageSetName+'/')
-    allCats = [cat for cat in allCats if not cat.startswith('.')]
+    allCats = [cat for cat in allCats if not cat.startswith('.') and os.path.isdir(f'../stimulusSets/{imageSetName}/{cat}')]
+    allCats = [cat for cat in allCats if not cat.startswith('binary')]  # skip binary_object, binary_object_scaled
     # allCats = ['register_rotate']
 
     for idx1,cc in enumerate(allCats):
@@ -256,43 +275,21 @@ def merge_blocks():
             for row_idx in range(1, nBlock+1):
                 for col_idx in range(1, nBlock+1):
 
-                    # Calculate column indices corresponding to block
-                    if col_idx == 1:
-                        col_val = np.arange(1,np.ceil(col_idx*blockLen+imBorder*2)+1)
-                    elif col_idx==nBlock:
-                        col_val = np.arange(np.ceil((col_idx-1)*blockLen), imSize+1)
-                    else:
-                        col_val = np.arange((col_idx-1)*blockLen,col_idx*blockLen+imBorder*2)
-
-                    # Calculate row indices corresponding to block
-                    if row_idx == 1:
-                        row_val = np.arange(1,np.ceil(row_idx*blockLen+imBorder*2)+1)
-                    elif row_idx==nBlock:
-                        row_val = np.arange(np.ceil((row_idx-1)*blockLen), imSize+1)
-                    else:
-                        row_val = np.arange((row_idx-1)*blockLen,row_idx*blockLen+imBorder*2)
-
-                    col_block = np.arange((col_idx-1)*blockLen, col_idx*blockLen).astype(int)
-                    row_block = np.arange((row_idx-1)*blockLen, row_idx*blockLen).astype(int)
-
-                    # Compute eccentricity values for specific block center
-                    eccY = ((np.mean(col_val)-(imSize/2))*mosaicSize/2)/(imSize/2)
-                    eccX = ((np.mean(row_val)-(imSize/2))*mosaicSize/2)/(imSize/2)
+                    # Block position and eccentricity (same as process_block)
+                    row_start, col_start, eccX_val, eccY_val = block_geometry(row_idx, col_idx)
                     FOV_val = str(sceneFOVdegs)
-
-                    eccX_val = str(np.round(eccX,2))
-                    eccY_val = str(np.round(eccY,2))
 
                     # Load reconstructed block image
                     file_path = f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/Xecc{eccX_val}_Yecc{eccY_val}/{allImgs[idx]}'
 
                     img = cv2.imread(file_path)
-                    img_size = img.shape[0]
 
-                    img_crop = img[imBorder:img_size-imBorder, imBorder:img_size-imBorder, :]
+                    # Keep the blockLen x blockLen core (drop imBorder top/left, imBorder+1 bottom/right)
+                    img_crop = img[imBorder:imBorder+blockLen, imBorder:imBorder+blockLen, :]
 
                     # Place cropped block reconstruction in correct location within initialized image
-                    init_img[np.ix_(row_block, col_block)] = img_crop
+                    # (block start in padded image == block start in original image)
+                    init_img[row_start:row_start+blockLen, col_start:col_start+blockLen, :] = img_crop
 
             # Save merged image in new directory organized by category/merged images
             if not os.path.exists(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged'):
@@ -300,19 +297,17 @@ def merge_blocks():
             cv2.imwrite(f'../stimulusSets/isettreeshrew/{species}_{FOV_val}/{imageSetName_new}_quad/{norm_cat}/merged/{allImgs[idx]}',np.uint8(init_img))
 
 # initialize species, image sizes
-torch.cuda.set_device(1)
+# Under Slurm the job only sees its assigned GPU (as device 0); interactively use GPU 1
+torch.cuda.set_device(0 if 'SLURM_JOB_ID' in os.environ else 1)
 species = 'treeshrew'
-sceneFOVdegs = 10
-imageSetName = 'Camel_novel_v2_test_nn'
-renderLoadPath = '/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/renderMatrices/'
-sceneFOVscale = 1.2
-imOrig = 227
-imBorder = int((np.ceil(imOrig*sceneFOVscale) - imOrig)/2) #23
-print(imBorder)
-imSize = np.ceil(imOrig + imBorder*2) #273
-
-borderSize = ((sceneFOVscale*sceneFOVdegs) - sceneFOVdegs)/2 #1
-mosaicSize = sceneFOVdegs+borderSize*2 #12
+sceneFOVdegs = 30
+imageSetName = 'Camel_v2_test_nn'
+renderLoadPath = '/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/renderMatrices_test/'
+imOrig = 256
+imBorder = 11                              # margin px (top/left); bottom/right gets +1
+imSize = imOrig + 2*imBorder + 1           # 279
+pixDeg = sceneFOVdegs / imOrig             # degrees per pixel
+imCenter = imBorder + (imOrig+1)/2         # 139.5 (1-based, matches MATLAB)
 
 # Initialize reconstruction iterations
 num_it = 4000
@@ -323,19 +318,18 @@ norm_img = False
 target_luminance = 0.5
 target_contrast = 0.1
 
-# Set number of blocks based on mosaic size
-if sceneFOVdegs < 1:
-    nBlock = 2
-elif sceneFOVdegs >= 1 and sceneFOVdegs < 5:
-    nBlock = 4
-elif sceneFOVdegs >=5:
-    nBlock = 6
-
-blockLen = imOrig/nBlock #37.833
-blockSize = [int(np.ceil(blockLen+imBorder*2)), int(np.ceil(blockLen+imBorder*2)), 3] #84
+# Block layout (must match create_render_matrix_piecewise.m)
+nBlock = 8
+blockLen = imOrig // nBlock                # 32
+blockSize1 = blockLen + 2*imBorder + 1     # 55, odd
+blockSize = [blockSize1, blockSize1, 3]
 
 # Run the parallelized version
 if __name__ == '__main__':
     # ThreadPoolExecutor (better for GPU-bound tasks)
-    run_parallel_threads()
-    merge_blocks()
+    all_done = run_parallel_threads()
+    # Only stitch full images once every block is reconstructed
+    if all_done:
+        merge_blocks()
+    else:
+        print('Not all blocks reconstructed yet - skipping merge; rerun to finish.')
