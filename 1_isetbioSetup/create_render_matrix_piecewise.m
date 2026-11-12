@@ -14,12 +14,8 @@ dataSavePath = '/mnt/DataDrive2/treeshrew/data_raw/treeshrew_isetbio/';
 % Specify parameters for full cone mosaic and render matrix located at a
 % specific location in visual space.
 species = 'treeshrew';
-imOrigSize = 20;
-sceneFOVpadding = 1.2;
-
-% Set image padding
-imBorder = (ceil(imOrigSize*sceneFOVpadding) - imOrigSize)/2;
-imSize = ceil(imOrigSize + imBorder*2);
+imOrigSize = 256;
+imBorder   = 11;                 % margin px (top/left); bottom/right gets +1
 
 % Integration time
 integrationTimeSeconds = 1/1000;
@@ -28,59 +24,62 @@ integrationTimeSeconds = 1/1000;
 meanLuminanceCdPerM2 = 20;
 
 % Can loop through multiple image sizes
-sceneFOVs = [2.5];
+sceneFOVs = [30];
+
+% Parallel pool: create once and reuse for every block.
+% Workers: 1 per CPU minus 2, capped at 18 (~9.5 GB each fits in 200 GB).
+nCPU = str2double(getenv('SLURM_CPUS_PER_TASK'));
+if isnan(nCPU)
+    nWorkers = 3;                      % not under Slurm: interactive default
+else
+    nWorkers = min(18, nCPU - 2);
+end
+
+pool = gcp('nocreate');
+if isempty(pool) || pool.NumWorkers ~= nWorkers
+    delete(pool);
+    c = parcluster('Processes');
+    js = getenv('MATLAB_JOBDIR');
+    if ~isempty(js), c.JobStorageLocation = js; end
+    c.NumWorkers = nWorkers;
+    parpool(c, nWorkers);
+end
+fprintf('Using %d workers\n', nWorkers);
+
 
 for sfd = 1:length(sceneFOVs)
-    % Specify mosaic size and padding amounts
     sceneFOVdegs = sceneFOVs(sfd);
-    borderSize = ((sceneFOVpadding*sceneFOVdegs) - sceneFOVdegs)/2;
-    mosaicSize = sceneFOVdegs+borderSize*2;
-
-    % Only used 4x4 blocks for 1.25 & 2.5 degs and 6x6 for 5 & 10 degs
-    if sceneFOVdegs<1
-        nBlock = 2;
-    elseif sceneFOVdegs>=1 && sceneFOVdegs<5
-        nBlock = 4;
-    elseif sceneFOVdegs>=5
-        nBlock = 6;
-    end
-    blockLen = imOrigSize/nBlock;
-
+    nBlock     = 8;
+    blockLen   = imOrigSize/nBlock;                 % 32
+    blockSize1 = blockLen + 2*imBorder + 1;         % 55, odd
+    imSize     = imOrigSize + 2*imBorder + 1;       % 279
+    pixDeg     = sceneFOVdegs / imOrigSize;
+    imCenter   = imBorder + (imOrigSize+1)/2;       % 139.5
     % Iterate through x and y block positions
     for row_idx=1:nBlock
         for col_idx=1:nBlock
 
             % Define indices of image that correspond to block
-            if col_idx==1
-                col_val = 1:ceil(col_idx*blockLen+imBorder*2);
-            elseif col_idx==nBlock
-                col_val = ceil((col_idx-1)*blockLen):imSize;
-            else
-                col_val = (col_idx-1)*blockLen:col_idx*blockLen+imBorder*2;
-            end
-            if row_idx==1
-                row_val = 1:ceil(row_idx*blockLen+imBorder*2);
-            elseif row_idx==nBlock
-                row_val = ceil((row_idx-1)*blockLen):imSize;
-            else
-                row_val = (row_idx-1)*blockLen:row_idx*blockLen+imBorder*2;
-            end
-
-            % Calculate center of block in terms of eccentricity
-            eccY = ((mean(col_val)-(imSize/2))*mosaicSize/2)/(imSize/2);
-            eccX = ((mean(row_val)-(imSize/2))*mosaicSize/2)/(imSize/2);
+            col_val = (col_idx-1)*blockLen + (1:blockSize1);
+            row_val = (row_idx-1)*blockLen + (1:blockSize1);
+            eccX =  (mean(col_val) - imCenter) * pixDeg;
+            eccY = -(mean(row_val) - imCenter) * pixDeg;
+            xBlockSize = length(col_val)*pixDeg;
+            yBlockSize = length(row_val)*pixDeg;
+            blockSize  = [blockSize1, blockSize1, 3];
 
             disp(sprintf('Image Size: %0.2f, Ecc: [%0.2f, %0.2f]',sceneFOVdegs, eccX, eccY))
 
-            % Mosaics size initialized
-            yBlockSize = (length(col_val)/imSize)*mosaicSize;
-            xBlockSize = (length(row_val)/imSize)*mosaicSize;
             mosaicFOVdegs = [xBlockSize yBlockSize];
 
             % Set up strings for file saving
             FOV_str = num2str(sceneFOVdegs);
             eccX_str = num2str(round(eccX,2));
             eccY_str = num2str(round(eccY,2));
+
+            renderFile = sprintf('%s/renderMatrices_test/%s_blocked/render_%s_Xecc%s_Yecc%s.mat', ...
+                dataSavePath,species,FOV_str,eccX_str,eccY_str);
+            if exist(renderFile,'file'), fprintf('  exists, skipping\n'); continue; end
 
             % Initialize retina object
             retina = ConeResponseCmosaic(eccX,eccY,'fovealDegree',mosaicFOVdegs(1));
@@ -111,30 +110,25 @@ for sfd = 1:length(sceneFOVs)
                 try
                     load(sprintf('%s/coneMosaics_test/treeshrew_blocked/coneMosaic_deg%s_Xecc%s_Yecc%s_quad.mat',dataSavePath,FOV_str,eccX_str,eccY_str),'TSConeMosaic')
                 catch
-                    TSConeMosaic = cMosaicTreeShrewCreate('fovDegs', mosaicFOVdegs,'integrationTime', integrationTimeSeconds,'eccentricityDegs',[eccX,eccY]);
+                    TSConeMosaic = cMosaicTreeShrewCreate('sizeDegs', mosaicFOVdegs,'integrationTime', integrationTimeSeconds,'eccentricityDegs',[eccX,eccY]);
                     save(sprintf('%s/coneMosaics_test/treeshrew_blocked/coneMosaic_deg%s_Xecc%s_Yecc%s_quad.mat',dataSavePath,FOV_str,eccX_str,eccY_str),'TSConeMosaic')
                 end
 
                 % Enter mosaic and OI into retina object
                 retina.Mosaic = TSConeMosaic;
                 retina.PSF = TSoi;
+                retina.psfData = [];
             end
-
-            % Generate test image based on block size
-            blockSize = [ceil(blockLen+imBorder*2), ceil(blockLen+imBorder*2), 3];
-            testImage = rand(blockSize);
-
-            % Compute cone excitations in response to test image
-            [coneExcitations, linearStimulusImage] = retina.compute(testImage);
 
             % Compute render matrix. May take a long time depending on
             % size of image! See create_render_matrix for details
             % regarding parallel processing constraints
-            renderMtx = retina.forwardRender(blockSize, true, true, 'useDoublePrecision', true);
-            renderMtx = double(renderMtx);
+            renderMtx = retina.forwardRender(blockSize, false, false, ...
+                'useDoublePrecision', true, 'numWorkers', nWorkers);
 
-            save(sprintf('%s/renderMatrices_test/%s_blocked/render_%s_Xecc%s_Yecc%s.mat',dataSavePath,species,FOV_str,eccX_str,eccY_str),'renderMtx','-v7.3')
-            delete(gcp('nocreate'))
+            save(renderFile,'renderMtx','-v7.3')
+            fprintf('%s  saved %s\n', datestr(now), renderFile);
+
             % end
         end
     end
