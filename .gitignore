@@ -75,6 +75,7 @@ Thumbs.db
 /helperFunctions/*
 /5_behaviorModeling/runs/*
 *.mkv
+/stimulusSets/
 
 # slurm files
 *.sbatch
